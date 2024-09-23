@@ -92,6 +92,7 @@ variable "roles" {
 variable "groups" {
   type = map(object({
     group_name = string
+    group_id   = string
     group_desc = string
   }))
 }

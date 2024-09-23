@@ -388,9 +388,10 @@ resource "harness_platform_roles" "roles" {
 }
 
 // User Groups
-resource "harness_user_group" "user_groups" {
+resource "harness_platform_usergroup" "user_groups" {
   for_each = var.groups
 
+  identifier  = each.value.group_id
   name        = each.value.group_name
   description = each.value.group_desc
 }
@@ -408,5 +409,238 @@ resource "harness_platform_role_assignments" "role_bindings" {
   disabled = false
   managed  = false
 
-  depends_on = [harness_user_group.user_groups, harness_platform_roles.roles]
+  depends_on = [harness_platform_usergroup.user_groups, harness_platform_roles.roles]
 }
+
+// Pipeline
+resource "harness_platform_pipeline" "provision_org" {
+  identifier  = "Provision_New_Org"
+  name        = "Provision New Org"
+  org_id      = var.organizations.management.org_id
+  project_id  = var.organizations.management.projects.proj0.proj_id
+  description = "Execute this to provision a new Org for the SE Demo."
+  yaml        = <<-EOT
+    pipeline:
+      identifier: Provision_New_Org
+      name: Provision New Org
+      orgIdentifier: ${var.organizations.management.org_id}
+      projectIdentifier: ${var.organizations.management.projects.proj0.proj_id}
+      tags: {}
+      stages:
+        - stage:
+            name: IaCM
+            identifier: IaCM
+            description: ""
+            type: IACM
+            spec:
+              workspace: <+input>
+              execution:
+                steps:
+                  - step:
+                      type: IACMTerraformPlugin
+                      name: init
+                      identifier: init
+                      timeout: 10m
+                      spec:
+                        command: init
+                  - step:
+                      type: IACMTerraformPlugin
+                      name: plan
+                      identifier: plan
+                      timeout: 10m
+                      spec:
+                        command: plan
+                  - step:
+                      type: Wiz
+                      name: Wiz Scan
+                      identifier: Wiz_Scan
+                      spec:
+                        mode: orchestration
+                        config: wiz-iac-templates
+                        target:
+                          type: repository
+                          detection: auto
+                        advanced:
+                          log:
+                            level: info
+                          args:
+                            cli: "-p annam-custom-misconfig-policy"
+                        auth:
+                          access_token: <+secrets.getValue("account.wiz_access_token")>
+                          access_id: <+secrets.getValue("account.wiz_access_id")>
+                      when:
+                        stageStatus: Success
+                        condition: "false"
+                  - step:
+                      type: IACMApproval
+                      name: IACMApproval
+                      identifier: IACMApproval
+                      spec:
+                        autoApprove: false
+                      timeout: 1h
+                      when:
+                        stageStatus: Success
+                        condition: <+pipeline.variables.require_approval>
+                  - step:
+                      type: IACMTerraformPlugin
+                      name: apply
+                      identifier: apply
+                      timeout: 1h
+                      spec:
+                        command: apply
+              platform:
+                os: Linux
+                arch: Amd64
+              runtime:
+                type: Cloud
+                spec: {}
+            tags: {}
+        - stage:
+            name: Deploy Delegate
+            identifier: Deploy_Delegate
+            description: ""
+            type: CI
+            spec:
+              cloneCodebase: false
+              platform:
+                os: Linux
+                arch: Amd64
+              runtime:
+                type: Cloud
+                spec: {}
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Read Secret
+                      identifier: Read_Secret
+                      spec:
+                        shell: Sh
+                        command: |-
+                          #!/bin/bash
+
+                          printf "%s" "$KEY" > key.json
+                          echo "  DEBUG: Key output to: key.json"
+
+                          echo "Formatting Key"
+                          jq . key.json > formatted_key.json
+                          echo "  DEBUG: Key output to: formatted_key.json"
+                        envVariables:
+                          KEY: <+secrets.getValue("account.GCP_Sales_Admin")>
+                  - stepGroup:
+                      name: Org Level Delegate
+                      identifier: Org_Level_Delegate
+                      steps:
+                        - step:
+                            type: Run
+                            name: Get Delegate YAML
+                            identifier: Get_Delegate_YAML
+                            spec:
+                              shell: Sh
+                              command: |-
+                                #!/bin/bash
+
+                                ORG_ID_LOWER=$(echo "$ORG_ID" | tr '[:upper:]' '[:lower:]')
+                                YAML_FILE="se-$${ORG_ID_LOWER}-org-delegate.yaml"
+                                JSON_BODY="{\"name\": \"se-$${ORG_ID_LOWER}-org-delegate\", \"clusterPermissionType\": \"CLUSTER_ADMIN\", \"customClusterNamespace\": \"se-$${ORG_ID_LOWER}-org-delegate\"}"
+
+                                echo "    DEBUG: JSON_BODY: $${JSON_BODY}"
+
+                                echo "Getting Delegate YAML"
+                                response=$(curl -s -X POST "https://demo.harness.io/ng/api/download-delegates/kubernetes?accountId=MjQzMTU3ZGEtN2NhOS00Ym&orgIdentifier=$${ORG_ID}" \
+                                    -H 'x-api-key: <+secrets.getValue("temp_code_pat")>' \
+                                    -H "content-type: application/json" \
+                                    --data-raw "$${JSON_BODY}" \
+                                    --output $YAML_FILE \
+                                    --write-out "%%{http_code}")
+
+                                if [ "$response" -eq 200 ]; then
+                                    echo "Request successful."
+                                    echo "    DEBUG: YAML File Contents"
+                                    cat $YAML_FILE
+                                else
+                                    echo "Request failed. HTTP $${response}"
+                                    exit 1
+                                fi
+                              envVariables:
+                                ORG_ID: <+pipeline.stages.IaCM.spec.workspace>
+                        - step:
+                            type: Run
+                            name: Update YAML
+                            identifier: Update_YAML
+                            spec:
+                              shell: Sh
+                              command: |-
+                                #!/bin/bash
+
+                                ORG_ID_LOWER=$(echo "$ORG_ID" | tr '[:upper:]' '[:lower:]')
+                                YAML_FILE="se-$${ORG_ID_LOWER}-org-delegate.yaml"
+
+                                echo "Updating Namespace"
+                                if [ "$ORG_ID_LOWER" = "demo" ]; then
+                                    sed -i 's/harness-delegate-ng/se-demo-org-delegate/g' $YAML_FILE
+                                elif [ "$ORG_ID_LOWER" = "sandbox" ]; then
+                                    sed -i 's/harness-delegate-ng/se-sandbox-org-delegate/g' $YAML_FILE
+                                else
+                                    echo "Error: Unknown environment"
+                                    exit 1
+                                fi
+
+                                echo "    DEBUG: YAML File Contents"
+                                cat $YAML_FILE
+                              envVariables:
+                                ORG_ID: <+pipeline.stages.IaCM.spec.workspace>
+                        - step:
+                            type: Run
+                            name: Create Delegate
+                            identifier: Create_Delegate
+                            spec:
+                              connectorRef: GCP_Sales
+                              image: us-east1-docker.pkg.dev/sales-209522/instruqt/packer-build:0.0.3
+                              shell: Sh
+                              command: |-
+                                #!/bin/bash
+
+                                ORG_ID_LOWER=$(echo "$ORG_ID" | tr '[:upper:]' '[:lower:]')
+                                YAML_FILE="se-$${ORG_ID_LOWER}-org-delegate.yaml"
+                                echo "    DEBUG: ORG_ID: $${ORG_ID}"
+                                echo "    DEBUG: ORG_ID_LOWER: $${ORG_ID_LOWER}"
+
+                                gcloud components install kubectl
+                                gcloud components install gke-gcloud-auth-plugin
+
+                                echo "Connecting to Cluster"
+                                gcloud auth activate-service-account --key-file="formatted_key.json"
+                                if [ "$ORG_ID_LOWER" == "demo" ]; then
+                                    echo "Running kubeconfig command for demo env"
+                                    <+workspace.Demo.gcloud_kubeconfig_command>
+                                elif [ "$ORG_ID_LOWER" == "sandbox" ]; then
+                                    echo "Running kubeconfig command for sandbox env"
+                                    <+workspace.Sandbox.gcloud_kubeconfig_command>
+                                else
+                                    echo "Error: Unknown environment"
+                                    exit 1
+                                fi
+
+                                echo "Applying Delegate YAML"
+                                kubectl apply -f $YAML_FILE
+                              envVariables:
+                                ORG_ID: <+pipeline.stages.IaCM.spec.workspace>
+            when:
+              pipelineStatus: Success
+              condition: <+pipeline.variables.deploy_delegate>
+      variables:
+        - name: require_approval
+          type: String
+          description: if true approval is required
+          required: true
+          value: <+input>.allowedValues(false,true)
+        - name: deploy_delegate
+          type: String
+          description: if true a delegate is deployed
+          required: true
+          value: <+input>.allowedValues(false,true)
+  EOT
+}
+
+

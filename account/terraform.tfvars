@@ -216,10 +216,12 @@ roles = {
 groups = {
   sales_eng = {
     group_name = "SalesEngineers"
+    group_id   = "SalesEngineers"
     group_desc = "Default role for all SEs. Provides access to the \"Demo\" and \"Sandbox\" organizations with default roles"
   }
   temp_admin = {
     group_name = "TempAdmin"
+    group_id   = "TempAdmin"
     group_desc = "Used to grant temporary admin access for product to help troubleshoot. Should be purged weekly."
   }
 }

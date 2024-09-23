@@ -245,21 +245,22 @@ resource "harness_platform_connector_aws" "aws_sales" {
   }
 }
 
-resource "harness_platform_connector_aws_secret_manager" "aws_sm" {
-  identifier = "AWS_Secrets_Manager"
-  name       = "AWS Secrets Manager"
-  default    = false
-
-  secret_name_prefix = "harness/software-delivery-demo"
-  region             = "us-east-1"
-  delegate_selectors = [local.delegate_selector]
-  credentials {
-    manual {
-      secret_key_ref = "account.AWS_Access_Key"
-      access_key_ref = "account.AWS_Secret_Access_Key"
-    }
-  }
-}
+// Error: Invalid request: Secret [AWS_Access_Key] is stored in secret manager [GCP_Secret_Manager]. Secret manager credentials should be stored in [Harness Built-in Secret Manager]
+//resource "harness_platform_connector_aws_secret_manager" "aws_sm" {
+//  identifier = "AWS_Secrets_Manager"
+//  name       = "AWS Secrets Manager"
+//  default    = false
+//
+//  secret_name_prefix = "harness/software-delivery-demo"
+//  region             = "us-east-1"
+//  delegate_selectors = [local.delegate_selector]
+//  credentials {
+//    manual {
+//      secret_key_ref = "account.AWS_Access_Key"
+//      access_key_ref = "account.AWS_Secret_Access_Key"
+//    }
+//  }
+//}
 
 resource "harness_platform_connector_jira" "jira_se" {
   identifier = "Harness_JIRA"
@@ -335,3 +336,77 @@ resource "harness_platform_project" "project" {
   depends_on = [harness_platform_organization.orgs]
 }
 
+// Resource Groups
+resource "harness_platform_resource_group" "demo_org_rg" {
+  identifier = var.organizations.demo.rg_id
+  name       = var.organizations.demo.rg_name
+
+  account_id           = var.account_id
+  allowed_scope_levels = ["account"]
+  included_scopes {
+    filter     = "EXCLUDING_CHILD_SCOPES"
+    account_id = var.account_id
+    org_id     = var.organizations.demo.org_id
+  }
+  resource_filter {
+    include_all_resources = true
+  }
+}
+
+resource "harness_platform_resource_group" "sandbox_org_rg" {
+  identifier = var.organizations.sandbox.rg_id
+  name       = var.organizations.sandbox.rg_name
+
+  account_id           = var.account_id
+  allowed_scope_levels = ["account"]
+  included_scopes {
+    filter     = "INCLUDING_CHILD_SCOPES"
+    account_id = var.account_id
+    org_id     = var.organizations.sandbox.org_id
+  }
+  resource_filter {
+    include_all_resources = false
+
+    dynamic "resources" {
+      for_each = var.sandbox_org_resource_types
+      content {
+        resource_type = resources.value
+      }
+    }
+  }
+}
+
+// Roles
+resource "harness_platform_roles" "roles" {
+  for_each = var.roles
+
+  identifier           = each.value.role_id
+  name                 = each.value.role_name
+  description          = each.value.role_desc
+  permissions          = each.value.role_perms
+  allowed_scope_levels = ["account"]
+}
+
+// User Groups
+resource "harness_user_group" "user_groups" {
+  for_each = var.groups
+
+  name        = each.value.group_name
+  description = each.value.group_desc
+}
+
+// Role Binding
+resource "harness_platform_role_assignments" "role_bindings" {
+  for_each = var.role_bindings
+
+  resource_group_identifier = each.value.rg_id
+  role_identifier           = each.value.role_id
+  principal {
+    identifier = each.value.prin_id
+    type       = "USER_GROUP"
+  }
+  disabled = false
+  managed  = false
+
+  depends_on = [harness_user_group.user_groups, harness_platform_roles.roles]
+}

@@ -62,11 +62,46 @@ variable "organizations" {
     org_name = string
     org_id   = string
     org_desc = string
+    rg_name  = string
+    rg_id    = string
     projects = map(object({
       proj_name  = string
       proj_id    = string
       proj_desc  = string
       proj_color = string
     }))
+  }))
+}
+
+// Resource Groups
+variable "sandbox_org_resource_types" {
+  type = list(string)
+}
+
+// Roles
+variable "roles" {
+  type = map(object({
+    role_name  = string
+    role_id    = string
+    role_desc  = string
+    role_perms = list(string)
+  }))
+}
+
+// User Groups
+variable "groups" {
+  type = map(object({
+    group_name = string
+    group_desc = string
+  }))
+}
+
+// Role Binding
+variable "role_bindings" {
+  type = map(object({
+    rg_id     = string
+    role_id   = string
+    prin_id   = string
+    prin_type = string
   }))
 }

@@ -106,3 +106,28 @@ variable "role_bindings" {
     prin_type = string
   }))
 }
+
+// Workspace
+variable "workspace" {
+  type = object({
+    prov_type      = string
+    prov_version   = string
+    prov_connector = string
+    repo_name      = string
+    repo_branch    = string
+    repo_path      = string
+    repo_api_key   = string
+  })
+}
+
+// Audit Config
+variable "audit_config" {
+  type = object({
+    k8s_conn_id     = string
+    k8s_conn_name   = string
+    k8s_conn_desc   = string
+    k8s_conn_url    = string
+    k8s_conn_sa_ref = string
+    k8s_conn_ca_ref = string
+  })
+}

@@ -1,7 +1,9 @@
 // Define the resources to create
 // Provisions the following resources: 
 //    GKE Cluster, GKE Node Pool
-//    Organizations, Projects
+//    Organizations, Projects, Resource Groups
+//    User Groups, Roles, Role Bindings
+//    Pipelines, Workspaces, K8s Connector
 
 locals {
   gke_cluster_name  = lower(join("-", ["se", var.org_id]))
@@ -376,6 +378,15 @@ resource "harness_platform_resource_group" "sandbox_org_rg" {
   }
 }
 
+// User Groups
+resource "harness_platform_usergroup" "user_groups" {
+  for_each = var.groups
+
+  identifier  = each.value.group_id
+  name        = each.value.group_name
+  description = each.value.group_desc
+}
+
 // Roles
 resource "harness_platform_roles" "roles" {
   for_each = var.roles
@@ -387,16 +398,7 @@ resource "harness_platform_roles" "roles" {
   allowed_scope_levels = ["account"]
 }
 
-// User Groups
-resource "harness_platform_usergroup" "user_groups" {
-  for_each = var.groups
-
-  identifier  = each.value.group_id
-  name        = each.value.group_name
-  description = each.value.group_desc
-}
-
-// Role Binding
+// Role Bindings
 resource "harness_platform_role_assignments" "role_bindings" {
   for_each = var.role_bindings
 
@@ -412,7 +414,7 @@ resource "harness_platform_role_assignments" "role_bindings" {
   depends_on = [harness_platform_usergroup.user_groups, harness_platform_roles.roles]
 }
 
-// Pipeline
+// Pipelines
 resource "harness_platform_pipeline" "provision_org" {
   identifier  = "Provision_New_Org"
   name        = "Provision New Org"
@@ -643,4 +645,373 @@ resource "harness_platform_pipeline" "provision_org" {
   EOT
 }
 
+resource "harness_platform_pipeline" "audit_events" {
+  identifier  = "Audit_Events"
+  name        = "Audit Events"
+  org_id      = var.organizations.management.org_id
+  project_id  = var.organizations.management.projects.proj0.proj_id
+  description = "Daily audit of the Platform_Engineering project."
+  yaml        = <<-EOT
+    pipeline:
+      name: Audit Events
+      identifier: Audit_Events
+      projectIdentifier: ${var.organizations.management.projects.proj0.proj_id}
+      orgIdentifier: ${var.organizations.management.org_id}
+      tags: {}
+      stages:
+        - stage:
+            name: Platform Engineering
+            identifier: Platform_Engineering
+            description: ""
+            type: CI
+            spec:
+              cloneCodebase: false
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Audit Demo Environment
+                      identifier: Audit_Demo_Environment
+                      spec:
+                        connectorRef: account.GCP_Sales_Admin
+                        image: us-east1-docker.pkg.dev/sales-209522/titra/python-tools:0.0.1
+                        shell: Python
+                        command: |-
+                          from datetime import datetime, timedelta
+                          import difflib
+                          import smtplib
+                          from email.mime.text import MIMEText
+                          from email.mime.multipart import MIMEMultipart
+                          from bs4 import BeautifulSoup
+                          import requests
 
+                          #### GLOBAL VARIABLES ####
+                          HARNESS_API = "https://app.harness.io"
+                          HARNESS_ACCOUNT_ID = "<+account.identifier>"
+                          HARNESS_API_KEY = "<+secrets.getValue("harness_api_key")>"
+                          HARNESS_ORG_ID = ${var.organizations.demo.org_id}
+                          HARNESS_PROJECT_ID = "<+stage.identifier>"
+                          SMTP_SERVER = "postfix.smtp.svc.cluster.local"
+
+
+                          def get_start_timestamp(time_delta):
+                              now = datetime.now()
+                              start_time = now - timedelta(hours=time_delta)
+                              start_timestamp = int(start_time.timestamp() * 1000)  # Convert datetime to timestamp in milliseconds
+                              return start_timestamp
+
+
+                          def parse_and_format_response(data):
+                              content = data.get("data", {}).get("content", [])
+                              if not content:
+                                  return [], []
+                              rows = []
+                              headers = ["DateTime", "User", "Module", "Action", "ResourceType", "ResourceIdentifier", "ResourceName", "RequestMethod"]
+                              for item in content:
+                                  timestamp = item.get("timestamp")
+                                  date_str = datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S") if timestamp else ""
+                                  user = item.get("authenticationInfo", {}).get("principal", {}).get("identifier", "")
+                                  module = item.get("module", "")
+                                  action = item.get("action", "")
+                                  resource_type = item.get("resource", {}).get("type", "")
+                                  resource_identifier = item.get("resource", {}).get("identifier", "")
+                                  resource_labels = item.get("resource", {}).get("labels", {})
+                                  resource_name = resource_labels.get("resourceName", "")
+                                  request_method = item.get("httpRequestInfo", {}).get("requestMethod", "")
+                                  rows.append([date_str, user, module, action, resource_type, resource_identifier, resource_name, request_method])
+                              return headers, rows
+
+
+                          def get_audit_events(base_url, account_id, api_key, org_id, project_id, time_delta, page_size=100):
+                              start_timestamp = get_start_timestamp(time_delta)
+                              url = f"{base_url}/audit/api/audits/list?accountIdentifier={account_id}&pageSize={page_size}"
+                              headers = {
+                                  "Content-Type": "application/json",
+                                  "x-api-key": api_key
+                              }
+                              payload = {
+                                  "scopes": [
+                                      {
+                                          "accountIdentifier": f"{account_id}",
+                                          "orgIdentifier": f"{org_id}",
+                                          "projectIdentifier": f"{project_id}"
+                                      }
+                                  ],
+                                  "filterType": "Audit",
+                                  "staticFilter": "EXCLUDE_LOGIN_EVENTS",
+                                  "startTime": start_timestamp
+                              }
+                              response = requests.post(url, headers=headers, json=payload)
+                              if response.status_code == 200:
+                                  return response.json()
+                              else:
+                                  print(f"Failed to retrieve audit events. Status code: {response.status_code}")
+                                  return None
+
+
+                          def get_audit_yaml(base_url, account_id, api_key, audit_id):
+                              url = f"{base_url}/gateway/audit/api/auditYaml?accountIdentifier={account_id}&auditId={audit_id}"
+                              headers = {
+                                  "Content-Type": "application/json",
+                                  "x-api-key": api_key
+                              }
+                              response = requests.get(url, headers=headers)
+                              if response.status_code == 200:
+                                  return response.json()
+                              elif response.status_code == 400:
+                                  error_message = f"Invalid request: Yaml Diff corresponding to audit with id {audit_id} does not exist"
+                                  if response.json().get("message") == error_message:
+                                      return response.json()
+                              else:
+                                  print(f"    ERROR: Failed to retrieve audit YAML for auditId {audit_id}. Status code: {response.status_code}")
+                                  return None
+
+
+                          def compute_yaml_diff(old_yaml, new_yaml):
+                              old_lines = old_yaml.splitlines()
+                              new_lines = new_yaml.splitlines()
+                              differ = difflib.HtmlDiff(wrapcolumn=80)
+                              diff_html = differ.make_file(
+                                  old_lines, new_lines,
+                                  fromdesc="Old YAML", todesc="New YAML",
+                                  context=True, numlines=5
+                              )
+                              # Extract the tbody(s)
+                              soup = BeautifulSoup(diff_html, "html.parser")
+                              tbodies = soup.find_all("tbody")
+                              tbody_str = "".join([str(tbody) for tbody in tbodies])
+                              return tbody_str if tbody_str else None
+
+
+                          def generate_html_table(headers, rows):
+                              table_html = "<table border='1' cellspacing='0' cellpadding='5'>\n"
+                              table_html += "  <tr>\n"
+                              for header in headers:
+                                  table_html += f"    <th>{header}</th>\n"
+                              table_html += "  </tr>\n"
+                              for row in rows:
+                                  table_html += "  <tr>\n"
+                                  for cell in row:
+                                      table_html += f"    <td>{cell}</td>\n"
+                                  table_html += "  </tr>\n"
+                              table_html += "</table>\n"
+                              return table_html
+
+
+                          def generate_html_email(audit_table_html, diffs_html_list):
+                              html_content = f"""
+                              <html>
+                              <head>
+                                  <style type="text/css">
+                                    table.diff {{font-family:Courier; border:medium;}}
+                                    .diff_header {{background-color:#e0e0e0}}
+                                    td.diff_header {{text-align:right}}
+                                    .diff_next {{background-color:#c0c0c0}}
+                                    .diff_add {{background-color:#aaffaa}}
+                                    .diff_chg {{background-color:#ffff77}}
+                                    .diff_sub {{background-color:#ffaaaa}}
+                                      table {{
+                                          width: 80%;
+                                          border-collapse: collapse;
+                                          font-size: small;
+                                      }}
+                                      th, td {{
+                                          border: 1px solid #dddddd;
+                                          text-align: left;
+                                          padding: 8px;
+                                      }}
+                                      th {{
+                                          background-color: #f2f2f2;
+                                      }}
+                                      .diff {{
+                                          margin-top: 20px;
+                                      }}
+                                  </style>
+                              </head>
+                              <body>
+                                  <h2>Audit Events in the Last 24 Hours</h2>
+                                  {audit_table_html}
+                                  <h2>YAML Diffs</h2>
+                                  {''.join(diffs_html_list)}
+                              </body>
+                              </html>
+                              {add_collapsible_script()}
+                              """
+                              return html_content
+
+
+                          def generate_diff_section(resource_name, resource_identifier, diff_html=None):
+                              if diff_html:
+                                  diff_section = f"""
+                                  <div class="diff">
+                                      <h3 class="collapsible-header">YAML Diff for Resource: {resource_name} (ID: {resource_identifier})</h3>
+                                      <table class="collapsible-content" style="display:table;">
+                                          <tr><th class="diff_next"><br/></th><th class="diff_header" colspan="2">Old YAML</th><th class="diff_next"><br/></th><th class="diff_header" colspan="2">New YAML</th></tr></thead>
+                                          {diff_html}
+                                      </table>
+                                  </div>
+                                  """
+                              else:
+                                  diff_section = f"""
+                                  <div class="diff">
+                                      <h3 class="collapsible-header">YAML Diff for Resource: {resource_name} (ID: {resource_identifier})</h3>
+                                      <p>There is no YAML difference associated with this event.</p>
+                                  </div>
+                                  """
+                              return diff_section
+
+
+                          def retrieve_yaml_diff(yaml_data, resource_name, resource_identifier, diffs_html_list):
+                              if yaml_data and yaml_data.get("status") == "SUCCESS":
+                                  print("    DEBUG: Audit YAML Successfully retrieved.")
+                                  old_yaml = yaml_data["data"].get("oldYaml", "")
+                                  new_yaml = yaml_data["data"].get("newYaml", "")
+                                  diff_html = compute_yaml_diff(old_yaml, new_yaml)
+                                  diff_section = generate_diff_section(resource_name, resource_identifier, diff_html)
+                                  diffs_html_list.append(diff_section)
+                              elif yaml_data and yaml_data.get("status") == "ERROR":
+                                  print("    DEBUG: Failed to retrieve Audit YAML.")
+                                  diff_section = generate_diff_section(resource_name, resource_identifier)
+                                  diffs_html_list.append(diff_section)
+                              return diffs_html_list
+
+
+                          def add_collapsible_script():
+                              collapsible_script = """
+                              <style>
+                                .collapsible-content {
+                                    display: none;
+                                }
+                                .collapsible-header {
+                                    cursor: pointer;
+                                    background-color: #f2f2f2;
+                                }
+                              </style>
+                              <script>
+                                document.addEventListener("DOMContentLoaded", function() {
+                                    const headers = document.querySelectorAll(".collapsible-header");
+                                    headers.forEach(header => {
+                                        header.addEventListener("click", function() {
+                                            const content = this.nextElementSibling;
+                                            if (content.style.display === "none" || content.style.display === "") {
+                                                content.style.display = "table";
+                                            } else {
+                                                content.style.display = "none";
+                                            }
+                                        });
+                                    });
+                                });
+                              </script>
+                              """
+                              return collapsible_script
+
+
+                          def send_email(smtp_server, to_email, subject, body):
+                              smtp_port = 25
+                              from_email = "notifications@harness-demo.site"
+
+                              # Create the email content
+                              message = MIMEMultipart()
+                              message["From"] = from_email
+                              message["To"] = to_email
+                              message["Subject"] = subject
+                              message.attach(MIMEText(body, "html"))
+
+                              try:
+                                  server = smtplib.SMTP(smtp_server, smtp_port)
+                                  server.sendmail(from_email, to_email, message.as_string())
+                                  print("Email sent successfully.")
+                              except Exception as e:
+                                  print(f"Error sending email: {e}")
+                              finally:
+                                  server.quit()
+
+
+                          def main():
+                              audit_data = get_audit_events(HARNESS_API, HARNESS_ACCOUNT_ID, HARNESS_API_KEY, HARNESS_ORG_ID, HARNESS_PROJECT_ID, 24)
+                              if not audit_data:
+                                  return
+
+                              # Parse data and generate HTML table
+                              headers, rows = parse_and_format_response(audit_data)
+                              audit_table_html = generate_html_table(headers, rows)
+                              content = audit_data.get("data", {}).get("content", [])
+                              diffs_html_list = []
+
+                              for item in content:
+                                  action = item.get("action", "")
+                                  if action == "UPDATE":
+                                      audit_id = item.get("auditId")
+                                      resource_identifier = item.get("resource", {}).get("identifier", "")
+                                      resource_name = item.get("resource", {}).get("labels", {}).get("resourceName", "")
+                                      print(f"  DEBUG: Attempting to get details for audit_id: {audit_id}")
+                                      yaml_data = get_audit_yaml(HARNESS_API, HARNESS_ACCOUNT_ID, HARNESS_API_KEY, audit_id)
+                                      diffs_html_list = retrieve_yaml_diff(yaml_data, resource_name, resource_identifier, diffs_html_list)
+
+                              # Generate HTML email content
+                              html_str = generate_html_email(audit_table_html, diffs_html_list)
+                              temp_html = BeautifulSoup(html_str, 'html.parser')
+                              email_html_content = temp_html.prettify()
+                              send_email(SMTP_SERVER, "joseph.titra@harness.io", "Daily - Demo Env Changes - Platform_Engineering ", email_html_content)
+
+
+                          if __name__ == "__main__":
+                              main()
+              infrastructure:
+                type: KubernetesDirect
+                spec:
+                  connectorRef: ${var.audit_config.k8s_conn_id}
+                  namespace: project0
+                  automountServiceAccountToken: true
+                  nodeSelector: {}
+                  os: Linux
+  EOT
+
+  depends_on = [harness_platform_connector_kubernetes.proj0_connector]
+}
+
+// Workspaces
+resource "harness_platform_workspace" "workspaces" {
+  for_each = var.organizations
+
+  identifier              = each.value.org_id
+  name                    = each.value.org_name
+  org_id                  = var.organizations.management.org_id
+  project_id              = var.organizations.management.projects.proj0.proj_id
+  provisioner_type        = var.workspace.prov_type
+  provisioner_version     = var.workspace.prov_version
+  repository              = var.workspace.repo_name
+  repository_branch       = var.workspace.repo_branch
+  repository_path         = var.workspace.repo_path
+  cost_estimation_enabled = true
+  provider_connector      = var.workspace.prov_connector
+  repository_connector    = harness_platform_connector_github.github.id
+
+  terraform_variable {
+    key        = "api_key"
+    value      = var.workspace.repo_api_key
+    value_type = "secret"
+  }
+
+  terraform_variable_file {
+    repository           = var.workspace.repo_name
+    repository_branch    = var.workspace.repo_branch
+    repository_path      = "${each.value.org_id}/terraform.tfvars"
+    repository_connector = harness_platform_connector_github.github.id
+  }
+}
+
+// K8s Connector
+resource "harness_platform_connector_kubernetes" "proj0_connector" {
+  identifier  = var.audit_config.k8s_conn_id
+  name        = var.audit_config.k8s_conn_name
+  org_id      = var.organizations.management.org_id
+  description = var.audit_config.k8s_conn_desc
+
+  service_account {
+    master_url                = var.audit_config.k8s_conn_url
+    service_account_token_ref = var.audit_config.k8s_conn_sa_ref
+    ca_cert_ref               = var.audit_config.k8s_conn_ca_ref
+  }
+  delegate_selectors = [local.delegate_selector]
+}

@@ -106,6 +106,24 @@ secrets = {
     secret_ref_name = "se_demo_HCR-AccountLevel_API_Key"
     secret_ver      = "1"
   }
+  ssca_key = {
+    secret_id       = "PlatformDemoCosignKey"
+    secret_name     = "Platform Demo Cosign Key"
+    secret_ref_name = "se_demo_PlatformDemoCosignKey"
+    secret_ver      = "1"
+  }
+  ssca_pub = {
+    secret_id       = "PlatformDemoCosignPub"
+    secret_name     = "Platform Demo Cosign Pub"
+    secret_ref_name = "se_demo_PlatformDemoCosignPub"
+    secret_ver      = "1"
+  }
+  ssca_secret = {
+    secret_id       = "PlatformDemoCosignPassword"
+    secret_name     = "Platform Demo Cosign Password"
+    secret_ref_name = "se_demo_PlatformDemoCosignPassword"
+    secret_ver      = "1"
+  }
 }
 
 // Organizations & Projects
@@ -252,4 +270,25 @@ role_bindings = {
     prin_id   = "TempAdmin"
     prin_type = "USER_GROUP"
   }
+}
+
+// Workspace
+workspace = {
+  prov_type      = "opentofu"
+  prov_version   = "1.8.1"
+  prov_connector = "account.GCP_Sales_Admin"
+  repo_name      = "jtitra/se_demo_mgmt"
+  repo_branch    = "main"
+  repo_path      = "terraform/org_setup"
+  repo_api_key   = "github_token" // "account.Github-danf425"
+}
+
+// Audit Config
+audit_config = {
+  k8s_conn_id     = "sedemoproject0ns"
+  k8s_conn_name   = "se-demo-project0-ns"
+  k8s_conn_desc   = "Used by the Audit_Events pipeline"
+  k8s_conn_url    = "https://35.237.6.220"
+  k8s_conn_sa_ref = "project0-k8s-user"
+  k8s_conn_ca_ref = "project0-k8s-ca-data"
 }

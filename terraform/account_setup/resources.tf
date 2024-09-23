@@ -550,7 +550,7 @@ resource "harness_platform_pipeline" "provision_org" {
 
                                 echo "Getting Delegate YAML"
                                 response=$(curl -s -X POST "https://demo.harness.io/ng/api/download-delegates/kubernetes?accountId=MjQzMTU3ZGEtN2NhOS00Ym&orgIdentifier=$${ORG_ID}" \
-                                    -H 'x-api-key: <+secrets.getValue("temp_code_pat")>' \
+                                    -H 'x-api-key: <+secrets.getValue("harness_api_key")>' \
                                     -H "content-type: application/json" \
                                     --data-raw "$${JSON_BODY}" \
                                     --output $YAML_FILE \
@@ -689,7 +689,7 @@ resource "harness_platform_pipeline" "audit_events" {
                           HARNESS_API = "https://app.harness.io"
                           HARNESS_ACCOUNT_ID = "<+account.identifier>"
                           HARNESS_API_KEY = "<+secrets.getValue("harness_api_key")>"
-                          HARNESS_ORG_ID = ${var.organizations.demo.org_id}
+                          HARNESS_ORG_ID = "${var.organizations.demo.org_id}"
                           HARNESS_PROJECT_ID = "<+stage.identifier>"
                           SMTP_SERVER = "postfix.smtp.svc.cluster.local"
 

@@ -52,3 +52,11 @@ variable "repos" {
     source_type    = string
   }))
 }
+
+// Org Policies
+variable "org_policies" {
+  type = map(object({
+    pol_type = string
+    pol_rego = string
+  }))
+}

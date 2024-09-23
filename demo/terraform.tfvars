@@ -116,3 +116,94 @@ repos = {
     source_type    = "github"
   }
 }
+
+// Org Policies
+org_policies = {
+  connector = {
+    pol_type = "Connector"
+    pol_rego = <<-REGO
+      package connector
+
+      deny[msg] {
+        # Check to see if the connector name contains the word "test"
+        regex.match("(?i)test", input.entity.name)
+        msg := sprintf("Connector name, '%s' must not contain the word 'test'. Help us keep our environment clean!", [input.entity.name])
+      }
+
+      deny[msg] {
+        # Check if the connector does not have the required tags
+        not input.entity.tags["personal"] == "true"
+        not input.entity.tags["service_account"] == "true"
+        msg := sprintf("Connector '%s' must be tagged with either 'personal' or 'service_account'.", [input.entity.name])
+      }
+    REGO
+  }
+  pipeline = {
+    pol_type = "Pipeline"
+    pol_rego = <<-REGO
+      #this policy prevents saving pipelines with the word "test" in the name
+      package pipeline
+
+      deny[msg] {
+        # Check if the pipeline name contains the word "test"
+        regex.match("(?i)test", input.pipeline.name)
+        
+        # Exempt pipelines if they belong to the "TEMP" project
+        input.pipeline.projectIdentifier != "TEMP"
+        
+        msg := sprintf("Pipeline name, '%s' must not contain the word 'test'. Help us keep our environment clean!", [input.pipeline.name])
+      }
+    REGO
+  }
+  secret = {
+    pol_type = "Secret"
+    pol_rego = <<-REGO
+      #this policy prevents saving secrets with the word "test" in the name
+      package secret
+
+      deny[msg] {
+        #check to see if the secret name contains the word test
+        regex.match("(?i)test", input.secret.name)
+        msg := sprintf("Secret name, '%s' must not contain the word 'test'. Help us keep our environment clean!", [input.secret.name])
+      }
+
+      Org Services Naming Convention
+      #We can only enforce the service naming convention using an inline step in the pipeline until they add support for policy sets on services
+      #this policy prevents saving service definitions with the word "test" in the name
+      package service
+
+      deny[msg] {
+        #check to see if the service name contains the word test
+        regex.match("(?i)test", input.entity.name)
+        msg := sprintf("Service name, '%s' must not contain the word 'test'. Help us keep our environment clean!", [input.entity.name])
+      }
+    REGO
+  }
+  service = {
+    pol_type = "Service"
+    pol_rego = <<-REGO
+      #We can only enforce the service naming convention using an inline step in the pipeline until they add support for policy sets on services
+      #this policy prevents saving service definitions with the word "test" in the name
+      package service
+
+      deny[msg] {
+        #check to see if the service name contains the word test
+        regex.match("(?i)test", input.entity.name)
+        msg := sprintf("Service name, '%s' must not contain the word 'test'. Help us keep our environment clean!", [input.entity.name])
+      }
+    REGO
+  }
+  template = {
+    pol_type = "Template"
+    pol_rego = <<-REGO
+      #this policy prevents saving templates with the word "test" in the name
+      package template
+
+      deny[msg] {
+        #check to see if the template name contains the word test
+        regex.match("(?i)test", input.template.name)
+        msg := sprintf("Template name, '%s' must not contain the word 'test'. Help us keep our environment clean!", [input.template.name])
+      }
+    REGO
+  }
+}

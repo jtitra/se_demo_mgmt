@@ -828,7 +828,16 @@ resource "harness_platform_policy" "dast_policy" {
   REGO
 }
 
-// Policy Set
+resource "harness_platform_policy" "org_naming" {
+  for_each = var.org_policies
+
+  identifier = "Org_Level_${each.value.pol_type}_Naming_Convention"
+  name       = "Org Level ${each.value.pol_type} Naming Convention"
+  org_id     = var.org_id
+  rego       = each.value.pol_rego
+}
+
+// Policy Sets
 resource "harness_platform_policyset" "sto_policyset" {
   identifier = "Security_Scan_Steps_Required"
   name       = "Security Scan Steps Required"
@@ -847,6 +856,21 @@ resource "harness_platform_policyset" "sto_policyset" {
   }
   policies {
     identifier = harness_platform_policy.dast_policy.id
+    severity   = "error"
+  }
+}
+
+resource "harness_platform_policyset" "org_naming" {
+  for_each = var.org_policies
+
+  identifier = "Org_Level_${each.value.pol_type}s_Naming_Convention"
+  name       = "Org Level ${each.value.pol_type}s Naming Convention"
+  org_id     = var.org_id
+  action     = "onsave"
+  type       = lower(each.value.pol_type)
+  enabled    = true
+  policies {
+    identifier = harness_platform_policy.org_naming["${lower(each.value.pol_type)}"].id
     severity   = "error"
   }
 }

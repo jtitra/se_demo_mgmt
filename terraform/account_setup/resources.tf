@@ -1007,6 +1007,7 @@ resource "harness_platform_connector_kubernetes" "proj0_connector" {
   identifier  = var.audit_config.k8s_conn_id
   name        = var.audit_config.k8s_conn_name
   org_id      = var.organizations.management.org_id
+  project_id  = var.organizations.management.projects.proj0.proj_id
   description = var.audit_config.k8s_conn_desc
 
   service_account {

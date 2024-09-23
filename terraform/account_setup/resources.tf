@@ -984,7 +984,6 @@ resource "harness_platform_workspace" "workspaces" {
   repository_branch       = var.workspace.repo_branch
   repository_path         = var.workspace.repo_path
   cost_estimation_enabled = true
-  default_pipelines       = true
   provider_connector      = var.workspace.prov_connector
   repository_connector    = "account.${harness_platform_connector_github.github.id}"
 

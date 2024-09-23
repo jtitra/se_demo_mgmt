@@ -27,6 +27,34 @@ locals {
   }
 }
 
+// GKE Cluster
+resource "google_container_cluster" "gke_cluster" {
+  name     = local.gke_cluster_name
+  location = var.gcp_zone
+
+  deletion_protection      = false
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  network    = "default"
+  subnetwork = "default"
+
+  workload_identity_config {
+    workload_pool = "${var.gcp_project_id}.svc.id.goog"
+  }
+
+  resource_labels = {
+    env     = local.gke_cluster_name
+    purpose = local.resource_purpose
+    owner   = var.resource_owner
+  }
+
+  timeouts {
+    create = "60m"
+    update = "60m"
+  }
+}
+
 // Organizations
 resource "harness_platform_organization" "orgs" {
   for_each = var.organizations

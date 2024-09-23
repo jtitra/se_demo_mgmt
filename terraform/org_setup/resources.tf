@@ -901,8 +901,8 @@ resource "harness_platform_pipeline" "devsecops" {
                       name: Compile
                       identifier: Compile
                       template:
-                        templateRef: org.${harness_platform_template.compile_template.identifier}
-                        versionLabel: "${harness_platform_template.compile_template.version}"
+                        templateRef: org.${harness_platform_template.compile.identifier}
+                        versionLabel: "${harness_platform_template.compile.version}"
                   - parallel:
                       - step:
                           type: Owasp
@@ -1135,8 +1135,8 @@ resource "harness_platform_pipeline" "devsecops" {
                 name: DAST Scans
                 identifier: DAST_Scans
                 template:
-                  templateRef: org.${harness_platform_template.dast_template_v2.identifier}
-                  versionLabel: "${harness_platform_template.dast_template_v2.version}"
+                  templateRef: org.${harness_platform_template.dast_v2.identifier}
+                  versionLabel: "${harness_platform_template.dast_v2.version}"
   EOT
 }
 

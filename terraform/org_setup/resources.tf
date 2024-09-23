@@ -107,10 +107,10 @@ resource "harness_platform_infrastructure" "infrastructure" {
 }
 
 // DAST Scans Templates
-resource "harness_platform_template" "dast_template_v1" {
+resource "harness_platform_template" "dast_v1" {
   identifier    = "DAST_Scans"
-  org_id        = var.org_id
   name          = "DAST Scans"
+  org_id        = var.org_id
   version       = "1.0"
   is_stable     = true
   template_yaml = <<-EOT
@@ -219,10 +219,10 @@ resource "harness_platform_template" "dast_template_v1" {
   EOT
 }
 
-resource "harness_platform_template" "dast_template_v2" {
+resource "harness_platform_template" "dast_v2" {
   identifier    = "DAST_Scans"
-  org_id        = var.org_id
   name          = "DAST Scans"
+  org_id        = var.org_id
   version       = "2.0"
   is_stable     = false
   template_yaml = <<-EOT
@@ -295,10 +295,10 @@ resource "harness_platform_template" "dast_template_v2" {
 }
 
 // Compile Template
-resource "harness_platform_template" "compile_template" {
+resource "harness_platform_template" "compile" {
   identifier    = "Compile_Application"
-  org_id        = var.org_id
   name          = "Compile Application"
+  org_id        = var.org_id
   version       = "1.0"
   is_stable     = true
   template_yaml = <<-EOT
@@ -338,8 +338,47 @@ resource "harness_platform_template" "compile_template" {
   EOT
 }
 
-// Project
-resource "harness_platform_project" "project" {
+// HCR Pull Request Template
+resource "harness_platform_template" "hcr_pr" {
+  identifier    = "Harness_Code_Pull_Request_Comment"
+  name          = "Harness Code Pull Request Comment"
+  version       = "v1"
+  is_stable     = true
+  template_yaml = <<-EOT
+    template:
+      name: Harness Code Pull Request Comment
+      identifier: Harness_Code_Pull_Request_Comment
+      versionLabel: v1
+      type: Step
+      spec:
+        type: Run
+        spec:
+          shell: Sh
+          command: |-
+            full_url="<+pipeline.executionUrl>"
+            base_url=$(echo "$full_url" | awk -F'/' '{print $1"//"$3}')
+
+            curl -i -X POST \
+              "$base_url/code/api/v1/repos/<+pipeline.properties.ci.codebase.repoName>/pullreq/<+trigger.prNumber>/comments?accountIdentifier=<+account.identifier>&orgIdentifier=<+org.identifier>&projectIdentifier=<+project.identifier>" \
+              -H 'Content-Type: application/json' \
+              -H "x-api-key: $secret" \
+              -d '{
+
+                "text": "'"$comment"'"
+              }'
+          envVariables:
+            comment: <+input>
+            secret: <+input>
+        when:
+          stageStatus: Success
+          condition: <+trigger.event> == "PR"
+      tags: {}
+      icon: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAbZJREFUWEe9lj16hCAQQGc7OJIpadPlHNulpaRNl3OkS0upx9hjQJd8AwwZBQ26otWufrvvzS/e4IJLCPGDGO/9bYkrbpztg3CndfhbaUwh0VWAwymwpUQ3gRlcqci3tshEF4EqnFKwkDhdgBou1J0i542VBCatQQkBpwog3CaAUgpc+pz57PvpAhw+DEOstZR/EhU4juUpGajBc9ejRBpDvEeR0054WmALHoDTBKEcWhdwfP6UADUc1p3SzvsN4XShRG0bHhYIo/buY60/BDjnZkuUw1HQVLbg4QxwOCgD8LAg72OWaIUfEqjBc8PdR6AxjItvPXL6za4SbMGXEi3wXRlogWMp7APg9UtUG27WJOlLUwb2wPF/UaB29h8S6An/twS94ZsCV8BXBa6CVwWuhBcCV8NnAnSw0Ki4z5dyatKc7x212vgVmzAeqx6GYQQpFRQCHeBFBkggnHBcohM8C/Do8eY0xfQrFVfq91s8dvdsuK2082dhFXMBguN9fI0zRgSBHvBZBpyzOXL+MosCeLXu9tbIcxNS9BQxPSBwT3jIAI2f1j6km65eES8zlAV6R7pWml+qnXFeyJAaBAAAAABJRU5ErkJggg==
+  EOT
+}
+
+// Projects
+resource "harness_platform_project" "projects" {
   for_each = var.projects
 
   identifier  = each.value.proj_id

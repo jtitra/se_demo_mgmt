@@ -280,7 +280,7 @@ workspace = {
   repo_name      = "jtitra/se_demo_mgmt"
   repo_branch    = "main"
   repo_path      = "terraform/org_setup"
-  repo_api_key   = "github_token" // "account.Github-danf425"
+  repo_api_key   = "harness_api_key"
 }
 
 // Audit Config

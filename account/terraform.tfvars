@@ -230,7 +230,7 @@ groups = {
 role_bindings = {
   se_demo_org = {
     rg_id     = "DemoOrg_Resource_Group"
-    role_id   = "SEAlmost_Account_Admin"
+    role_id   = "SE_Almost_Account_Admin"
     prin_id   = "SalesEngineers"
     prin_type = "USER_GROUP"
   }
@@ -242,7 +242,7 @@ role_bindings = {
   }
   se_account_level = {
     rg_id     = "_all_account_level_resources"
-    role_id   = "SE_RoleAccountLevel_Resources"
+    role_id   = "SE_Account_Level_Resources"
     prin_id   = "SalesEngineers"
     prin_type = "USER_GROUP"
   }

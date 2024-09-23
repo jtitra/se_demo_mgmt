@@ -10,9 +10,9 @@ resource_owner     = "dan"
 
 // Organizations & Projects
 organizations = {
-  mgmt = {
+  management = {
     org_name  = "Management"
-    org_id    = "Management"
+    org_id    = "management"
     org_desc  = "Used for automated management of the SE Demo Environment."
     projects = {
       proj0 = {
@@ -25,13 +25,13 @@ organizations = {
   }
   demo = {
     org_name  = "Demo"
-    org_id    = "Demo"
+    org_id    = "demo"
     org_desc  = "The place to be for all your demo needs."
     projects = {}
   }
   sandbox = {
     org_name  = "Sandbox"
-    org_id    = "Sandbox"
+    org_id    = "sandbox"
     org_desc  = "SE playground. The fun starts here!"
     projects = {}
   }

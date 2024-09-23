@@ -43,7 +43,9 @@ resource "harness_platform_project" "project" {
   identifier  = each.value.proj.proj_id
   name        = each.value.proj.proj_name
   description = each.value.proj.proj_desc
-  org_id      = each.key
+  org_id      = each.value.org_key
   color       = each.value.proj.proj_color
+
+  depends_on = [harness_platform_organization.orgs]
 }
 

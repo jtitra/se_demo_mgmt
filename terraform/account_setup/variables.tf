@@ -49,9 +49,9 @@ variable "resource_owner" {
 // Organizations & Projects
 variable "organizations" {
   type = map(object({
-    org_name   = string
-    org_id     = string
-    org_desc   = string
+    org_name = string
+    org_id   = string
+    org_desc = string
     projects = map(object({
       proj_name  = string
       proj_id    = string

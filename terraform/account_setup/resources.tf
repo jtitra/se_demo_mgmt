@@ -4,8 +4,9 @@
 //    Organizations, Projects
 
 locals {
-  gke_cluster_name = lower(join("-", ["se", var.org_id]))
-  resource_purpose = lower(join("-", ["official-se", var.org_id]))
+  gke_cluster_name  = lower(join("-", ["se", var.org_id]))
+  resource_purpose  = lower(join("-", ["official-se", var.org_id]))
+  delegate_selector = lower(join("-", ["se", var.org_id, "account-delegate"]))
   organization_projects_list = flatten([
     for org_key, org_value in var.organizations : [
       for proj_key, proj_value in org_value.projects : {
@@ -53,6 +54,50 @@ resource "google_container_cluster" "gke_cluster" {
     create = "60m"
     update = "60m"
   }
+}
+
+// GKE Node Pool
+//resource "google_container_node_pool" "gke_node_pool" {
+//  name       = "${google_container_cluster.gke_cluster.name}-pool-01"
+//  cluster    = google_container_cluster.gke_cluster.id
+//  node_count = var.gke_min_node_count
+//
+//  autoscaling {
+//    min_node_count = var.gke_min_node_count
+//    max_node_count = var.gke_max_node_count
+//  }
+//
+//  management {
+//    auto_upgrade = true
+//  }
+//
+//  node_config {
+//    machine_type = var.gke_machine_type
+//    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+//
+//    metadata = {
+//      disable-legacy-endpoints = "true"
+//    }
+//
+//    workload_metadata_config {
+//      mode = "GKE_METADATA"
+//    }
+//  }
+//
+//  timeouts {
+//    create = "60m"
+//    update = "60m"
+//  }
+//}
+
+// GCP Secret Manager
+resource "harness_platform_connector_gcp_secret_manager" "gcp_sm" {
+  identifier  = "GCP_Secret_Manager"
+  name        = "GCP Secret Manager"
+  description = "Secret Manager in Project: sales-209522\nUsed for all Account level connectors"
+
+  delegate_selectors = [local.delegate_selector]
+  credentials_ref    = "account.GCP_Sales_Admin"
 }
 
 // Organizations

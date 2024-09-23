@@ -985,7 +985,7 @@ resource "harness_platform_workspace" "workspaces" {
   repository_path         = var.workspace.repo_path
   cost_estimation_enabled = true
   provider_connector      = var.workspace.prov_connector
-  repository_connector    = harness_platform_connector_github.github.id
+  repository_connector    = "account.${harness_platform_connector_github.github.id}"
 
   terraform_variable {
     key        = "api_key"
@@ -997,7 +997,7 @@ resource "harness_platform_workspace" "workspaces" {
     repository           = var.workspace.repo_name
     repository_branch    = var.workspace.repo_branch
     repository_path      = "${each.value.org_id}/terraform.tfvars"
-    repository_connector = harness_platform_connector_github.github.id
+    repository_connector = "account.${harness_platform_connector_github.github.id}"
   }
 }
 

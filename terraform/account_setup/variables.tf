@@ -46,22 +46,17 @@ variable "resource_owner" {
   type = string
 }
 
-// Organizations
+// Organizations & Projects
 variable "organizations" {
   type = map(object({
-    org_name  = string
-    org_id    = string
-    org_desc  = string
-    proj_color = string
-  }))
-}
-
-// Projects
-variable "projects" {
-  type = map(object({
-    proj_name  = string
-    proj_id    = string
-    proj_desc  = string
-    proj_color = string
+    org_name   = string
+    org_id     = string
+    org_desc   = string
+    projects = map(object({
+      proj_name  = string
+      proj_id    = string
+      proj_desc  = string
+      proj_color = string
+    }))
   }))
 }

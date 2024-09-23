@@ -46,6 +46,16 @@ variable "resource_owner" {
   type = string
 }
 
+// Secrets
+variable "secrets" {
+  type = map(object({
+    secret_name     = string
+    secret_id       = string
+    secret_ref_name = string
+    secret_ver      = string
+  }))
+}
+
 // Organizations & Projects
 variable "organizations" {
   type = map(object({

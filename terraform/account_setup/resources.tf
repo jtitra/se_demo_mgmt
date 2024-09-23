@@ -100,6 +100,24 @@ resource "harness_platform_connector_gcp_secret_manager" "gcp_sm" {
   credentials_ref    = "account.GCP_Sales_Admin"
 }
 
+// GCP Secrets
+resource "harness_platform_secret_text" "gcp_secrets" {
+  for_each = var.secrets
+
+  identifier = each.value.secret_id
+  name       = each.value.secret_name
+
+  secret_manager_identifier = harness_platform_connector_gcp_secret_manager.gcp_sm.identifier
+  value_type                = "Reference"
+  value                     = each.value.secret_ref_name
+
+  additional_metadata {
+    values {
+      version = each.value.secret_ver
+    }
+  }
+}
+
 // Organizations
 resource "harness_platform_organization" "orgs" {
   for_each = var.organizations

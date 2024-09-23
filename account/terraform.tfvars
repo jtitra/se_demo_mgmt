@@ -8,6 +8,22 @@ gke_max_node_count = 10
 gke_machine_type   = "e2-standard-8"
 resource_owner     = "dan"
 
+// Secrets
+secrets = {
+  dd_api_diego = {
+    secret_id = "DataDogApiKeyDiego"
+    secret_name = "DataDogApiKeyDiego"
+    secret_ref_name = "se_demo_DataDogApiKeyDiego"
+    secret_ver = "1"
+  }
+  dd_app_diego = {
+    secret_id = "DataDogAppKeyDiego"
+    secret_name = "DataDogAppKeyDiego"
+    secret_ref_name = "se_demo_DataDogAppKeyDiego"
+    secret_ver = "1"
+  }
+}
+
 // Organizations & Projects
 organizations = {
   management = {

@@ -173,6 +173,12 @@ sandbox_org_resource_types = [
   "USER", "AUTHSETTING", "DELEGATECONFIGURATION", "CCM_CLOUD_ASSET_GOVERNANCE_RULE_ENFORCEMENT"
 ]
 
+// Users
+users = [
+  "david.stewart@harness.io", "nicolas.acton@harness.io", "chris.storz@harness.io",
+  "joseph.titra@harness.io", "dan.flores@harness.io", "nikolaos.papageorgiou@harness.io"
+]
+
 // User Groups
 groups = {
   sales_eng = {

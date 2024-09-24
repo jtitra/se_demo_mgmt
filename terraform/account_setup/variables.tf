@@ -88,6 +88,11 @@ variable "roles" {
   }))
 }
 
+// Users
+variable "users" {
+  type = list(string)
+}
+
 // User Groups
 variable "groups" {
   type = map(object({

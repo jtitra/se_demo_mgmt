@@ -378,6 +378,14 @@ resource "harness_platform_resource_group" "sandbox_org_rg" {
   }
 }
 
+// Users
+resource "harness_platform_user" "users" {
+  for_each = toset(var.users)
+
+  email       = each.value
+  user_groups = ["_account_all_users"]
+}
+
 // User Groups
 resource "harness_platform_usergroup" "user_groups" {
   for_each = var.groups

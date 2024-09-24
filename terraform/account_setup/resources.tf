@@ -109,7 +109,7 @@ resource "harness_platform_secret_text" "gcp_secrets" {
   identifier = each.value.secret_id
   name       = each.value.secret_name
 
-  secret_manager_identifier = harness_platform_connector_gcp_secret_manager.gcp_sm.identifier
+  secret_manager_identifier = "account.${harness_platform_connector_gcp_secret_manager.gcp_sm.identifier}"
   value_type                = "Reference"
   value                     = each.value.secret_ref_name
 

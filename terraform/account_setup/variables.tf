@@ -94,6 +94,7 @@ variable "groups" {
     group_name = string
     group_id   = string
     group_desc = string
+    group_members = list(string)
   }))
 }
 

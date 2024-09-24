@@ -173,6 +173,28 @@ sandbox_org_resource_types = [
   "USER", "AUTHSETTING", "DELEGATECONFIGURATION", "CCM_CLOUD_ASSET_GOVERNANCE_RULE_ENFORCEMENT"
 ]
 
+// User Groups
+groups = {
+  sales_eng = {
+    group_name = "SalesEngineers"
+    group_id   = "SalesEngineers"
+    group_desc = "Default role for all SEs. Provides access to the \"Demo\" and \"Sandbox\" organizations with default roles."
+    group_members = []
+  }
+  temp_admin = {
+    group_name = "TempAdmin"
+    group_id   = "TempAdmin"
+    group_desc = "Used to grant temporary admin access for product to help troubleshoot. Should be purged weekly."
+    group_members = []
+  }
+  account_admin = {
+    group_name = "AccountAdmin"
+    group_id   = "AccountAdmin"
+    group_desc = "Full admins and official owners of the demo environment."
+    group_members = ["david.stewart@harness.io", "nicolas.acton@harness.io", "chris.storz@harness.io", "joseph.titra@harness.io", "dan.flores@harness.io", "nikolaos.papageorgiou@harness.io"]
+  }
+}
+
 // Roles
 roles = {
   se_almost_admin = {
@@ -230,20 +252,6 @@ roles = {
   }
 }
 
-// User Groups
-groups = {
-  sales_eng = {
-    group_name = "SalesEngineers"
-    group_id   = "SalesEngineers"
-    group_desc = "Default role for all SEs. Provides access to the \"Demo\" and \"Sandbox\" organizations with default roles"
-  }
-  temp_admin = {
-    group_name = "TempAdmin"
-    group_id   = "TempAdmin"
-    group_desc = "Used to grant temporary admin access for product to help troubleshoot. Should be purged weekly."
-  }
-}
-
 // Role Binding
 role_bindings = {
   se_demo_org = {
@@ -268,6 +276,12 @@ role_bindings = {
     rg_id     = "_all_resources_including_child_scopes"
     role_id   = "_account_admin"
     prin_id   = "TempAdmin"
+    prin_type = "USER_GROUP"
+  }
+  account_admin = {
+    rg_id     = "_all_resources_including_child_scopes"
+    role_id   = "_account_admin"
+    prin_id   = "AccountAdmin"
     prin_type = "USER_GROUP"
   }
 }

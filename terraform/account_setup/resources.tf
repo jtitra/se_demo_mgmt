@@ -385,6 +385,7 @@ resource "harness_platform_usergroup" "user_groups" {
   identifier  = each.value.group_id
   name        = each.value.group_name
   description = each.value.group_desc
+  users       = each.value.group_members
 }
 
 // Roles

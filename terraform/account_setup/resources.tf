@@ -542,6 +542,7 @@ resource "harness_platform_pipeline" "provision_org" {
                               command: |-
                                 #!/bin/bash
 
+                                HARNESS_API="https://app.harness.io"
                                 ORG_ID_LOWER=$(echo "$ORG_ID" | tr '[:upper:]' '[:lower:]')
                                 YAML_FILE="se-$${ORG_ID_LOWER}-org-delegate.yaml"
                                 JSON_BODY="{\"name\": \"se-$${ORG_ID_LOWER}-org-delegate\", \"clusterPermissionType\": \"CLUSTER_ADMIN\", \"customClusterNamespace\": \"se-$${ORG_ID_LOWER}-org-delegate\"}"
@@ -549,7 +550,7 @@ resource "harness_platform_pipeline" "provision_org" {
                                 echo "    DEBUG: JSON_BODY: $${JSON_BODY}"
 
                                 echo "Getting Delegate YAML"
-                                response=$(curl -s -X POST "https://demo.harness.io/ng/api/download-delegates/kubernetes?accountId=MjQzMTU3ZGEtN2NhOS00Ym&orgIdentifier=$${ORG_ID}" \
+                                response=$(curl -s -X POST "$${HARNESS_API}/ng/api/download-delegates/kubernetes?accountId=<+account.identifier>&orgIdentifier=$${ORG_ID}" \
                                     -H 'x-api-key: <+secrets.getValue("harness_api_key")>' \
                                     -H "content-type: application/json" \
                                     --data-raw "$${JSON_BODY}" \
@@ -615,10 +616,10 @@ resource "harness_platform_pipeline" "provision_org" {
                                 gcloud auth activate-service-account --key-file="formatted_key.json"
                                 if [ "$ORG_ID_LOWER" == "demo" ]; then
                                     echo "Running kubeconfig command for demo env"
-                                    <+workspace.Demo.gcloud_kubeconfig_command>
+                                    <+workspace.demo.gcloud_kubeconfig_command>
                                 elif [ "$ORG_ID_LOWER" == "sandbox" ]; then
                                     echo "Running kubeconfig command for sandbox env"
-                                    <+workspace.Sandbox.gcloud_kubeconfig_command>
+                                    <+workspace.sandbox.gcloud_kubeconfig_command>
                                 else
                                     echo "Error: Unknown environment"
                                     exit 1

@@ -120,7 +120,200 @@ resource "harness_platform_secret_text" "gcp_secrets" {
   }
 }
 
+// Connectors
+resource "harness_platform_connector_datadog" "datadog" {
+  identifier = "Datadog"
+  name       = "Datadog"
 
+  url                 = "https://app.datadoghq.com/api/"
+  delegate_selectors  = [local.delegate_selector]
+  application_key_ref = "account.DataDogAppKeyDiego"
+  api_key_ref         = "account.DataDogApiKeyDiego"
+}
+
+resource "harness_platform_connector_datadog" "datadog_backup" {
+  identifier  = "Datadog_Backup"
+  name        = "Datadog - Backup"
+  description = "Owned by Diego - Datadog"
+
+  url                 = "https://app.datadoghq.com/api/"
+  delegate_selectors  = [local.delegate_selector]
+  application_key_ref = "account.DataDogAppKey"
+  api_key_ref         = "account.DataDogAPIKey"
+}
+
+resource "harness_platform_connector_docker" "docker_v1" {
+  identifier  = "harnessImageV1"
+  name        = "Harness Docker Connector"
+  description = "Harness internal connector"
+
+  type               = "DockerHub"
+  url                = "https://index.docker.io/v1/"
+  delegate_selectors = [local.delegate_selector]
+  credentials {
+    username     = "seworkshop"
+    password_ref = "account.docker-pw"
+  }
+}
+
+resource "harness_platform_connector_git" "hcr_account_level" {
+  identifier  = "HCRAccountLevel"
+  name        = "HCR-AccountLevel"
+  description = "Git connector for all account level repos in Harness Code Repo"
+
+  url                = "https://git.harness.io/${var.account_id}"
+  connection_type    = "Account"
+  validation_repo    = "account.se_demo_mgmt"
+  delegate_selectors = [local.delegate_selector]
+  credentials {
+    http {
+      username     = "joseph.titra@harness.io"
+      password_ref = "account.HCR-AccountLevel_API_Key"
+    }
+  }
+}
+
+resource "harness_platform_connector_github" "github" {
+  identifier  = "Github"
+  name        = "Github"
+  description = "Account-wide credentials aligned to DanFlores.\nPlease use OAuth: https://developer.harness.io/docs/platform/git-experience/oauth-integration"
+
+  url                = "https://github.com"
+  connection_type    = "Account"
+  validation_repo    = "wings-software/e2e-enterprise-demo"
+  delegate_selectors = [local.delegate_selector]
+  credentials {
+    http {
+      username  = "danf425"
+      token_ref = "account.Github-danf425"
+    }
+  }
+  api_authentication {
+    token_ref = "account.Github-danf425"
+  }
+}
+
+resource "harness_platform_connector_appdynamics" "appd_prod" {
+  identifier  = "AppDynamics_Prod"
+  name        = "AppDynamics - Prod"
+  description = "Prod Demo Data"
+
+  url                = "https://harness-test.saas.appdynamics.com/controller/"
+  account_name       = "harness-test"
+  delegate_selectors = [local.delegate_selector]
+  username_password {
+    username     = "raghu@harness.io"
+    password_ref = "account.AppDProdKey"
+  }
+}
+
+resource "harness_platform_connector_artifactory" "artifactory_self_hosted" {
+  identifier = "Artifactory_Self_Hosted"
+  name       = "Artifactory - Self Hosted"
+
+  url                = "https://harness-artifactory.harness.io/artifactory/"
+  delegate_selectors = [local.delegate_selector]
+  credentials {
+    username     = "shawn_pearson"
+    password_ref = "account.Artifactory-ShawnsPW"
+  }
+}
+
+resource "harness_platform_connector_service_now" "snow_dev" {
+  identifier = "ServiceNow_Dev"
+  name       = "ServiceNow - Dev"
+
+  service_now_url    = "https://ven03172.service-now.com/"
+  delegate_selectors = [local.delegate_selector]
+  auth {
+    auth_type = "UsernamePassword"
+    username_password {
+      username     = "demo-admin"
+      password_ref = "account.ServiceNow_API_Key"
+    }
+  }
+}
+
+resource "harness_platform_connector_aws" "aws_sales" {
+  identifier = "AWS"
+  name       = "AWS - Sales Account"
+
+  manual {
+    access_key_ref     = "account.AWS_Access_Key"
+    secret_key_ref     = "account.AWS_Secret_Access_Key"
+    delegate_selectors = [local.delegate_selector]
+    region             = "us-east-2"
+  }
+}
+
+// Error: Invalid request: Secret [AWS_Access_Key] is stored in secret manager [GCP_Secret_Manager]. Secret manager credentials should be stored in [Harness Built-in Secret Manager]
+//resource "harness_platform_connector_aws_secret_manager" "aws_sm" {
+//  identifier = "AWS_Secrets_Manager"
+//  name       = "AWS Secrets Manager"
+//  default    = false
+//
+//  secret_name_prefix = "harness/software-delivery-demo"
+//  region             = "us-east-1"
+//  delegate_selectors = [local.delegate_selector]
+//  credentials {
+//    manual {
+//      secret_key_ref = "account.AWS_Access_Key"
+//      access_key_ref = "account.AWS_Secret_Access_Key"
+//    }
+//  }
+//}
+
+resource "harness_platform_connector_jira" "jira_se" {
+  identifier = "Harness_JIRA"
+  name       = "Harness JIRA"
+
+  url                = "https://harness.atlassian.net"
+  delegate_selectors = [local.delegate_selector]
+  auth {
+    auth_type = "UsernamePassword"
+    username_password {
+      username     = "se-accounts@harness.io"
+      password_ref = "account.Harness_JIRA_Key"
+    }
+  }
+}
+
+resource "harness_platform_connector_newrelic" "new_relic" {
+  identifier = "New_Relic"
+  name       = "New Relic"
+
+  url                = "https://insights-api.newrelic.com/"
+  delegate_selectors = [local.delegate_selector]
+  account_id         = "1805869"
+  api_key_ref        = "account.NewRelic"
+}
+
+// Cloud Cost Connectors
+resource "harness_platform_connector_gcp_cloud_cost" "ccm_gcp_dev" {
+  identifier = "CCM_Harness_GCP_Dev"
+  name       = "CCM - Harness GCP Dev"
+
+  features_enabled      = ["BILLING"]
+  gcp_project_id        = "durable-circle-282815"
+  service_account_email = "harness-ce-mjqzm-30979@prod-prod0-3966.iam.gserviceaccount.com"
+  billing_export_spec {
+    data_set_id = "bill_test_doc"
+    table_id    = "gcp_billing_export_v1_014665_7E972A_C61BCD"
+  }
+}
+
+resource "harness_platform_connector_gcp_cloud_cost" "ccm_gcp" {
+  identifier = "CCM_Harness_GCP"
+  name       = "CCM - Harness GCP"
+
+  features_enabled      = ["BILLING", "VISIBILITY"]
+  gcp_project_id        = "prod-setup-205416"
+  service_account_email = "harness-ce-mjqzm-30979@prod-prod0-3966.iam.gserviceaccount.com"
+  billing_export_spec {
+    data_set_id = "billing_prod_all_projects"
+    table_id    = ""
+  }
+}
 
 // Organizations
 resource "harness_platform_organization" "orgs" {

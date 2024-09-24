@@ -129,6 +129,8 @@ resource "harness_platform_connector_datadog" "datadog" {
   delegate_selectors  = [local.delegate_selector]
   application_key_ref = "account.DataDogAppKeyDiego"
   api_key_ref         = "account.DataDogApiKeyDiego"
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_datadog" "datadog_backup" {
@@ -140,6 +142,8 @@ resource "harness_platform_connector_datadog" "datadog_backup" {
   delegate_selectors  = [local.delegate_selector]
   application_key_ref = "account.DataDogAppKey"
   api_key_ref         = "account.DataDogAPIKey"
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_docker" "docker_v1" {
@@ -154,6 +158,8 @@ resource "harness_platform_connector_docker" "docker_v1" {
     username     = "seworkshop"
     password_ref = "account.docker-pw"
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_git" "hcr_account_level" {
@@ -171,6 +177,8 @@ resource "harness_platform_connector_git" "hcr_account_level" {
       password_ref = "account.HCR-AccountLevel_API_Key"
     }
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_github" "github" {
@@ -191,6 +199,8 @@ resource "harness_platform_connector_github" "github" {
   api_authentication {
     token_ref = "account.Github-danf425"
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_appdynamics" "appd_prod" {
@@ -205,6 +215,8 @@ resource "harness_platform_connector_appdynamics" "appd_prod" {
     username     = "raghu@harness.io"
     password_ref = "account.AppDProdKey"
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_artifactory" "artifactory_self_hosted" {
@@ -217,6 +229,8 @@ resource "harness_platform_connector_artifactory" "artifactory_self_hosted" {
     username     = "shawn_pearson"
     password_ref = "account.Artifactory-ShawnsPW"
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_service_now" "snow_dev" {
@@ -232,6 +246,8 @@ resource "harness_platform_connector_service_now" "snow_dev" {
       password_ref = "account.ServiceNow_API_Key"
     }
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_aws" "aws_sales" {
@@ -244,6 +260,8 @@ resource "harness_platform_connector_aws" "aws_sales" {
     delegate_selectors = [local.delegate_selector]
     region             = "us-east-2"
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 // Error: Invalid request: Secret [AWS_Access_Key] is stored in secret manager [GCP_Secret_Manager]. Secret manager credentials should be stored in [Harness Built-in Secret Manager]
@@ -261,6 +279,8 @@ resource "harness_platform_connector_aws" "aws_sales" {
 //      access_key_ref = "account.AWS_Secret_Access_Key"
 //    }
 //  }
+//
+//  depends_on = [harness_platform_secret_text.gcp_secrets]
 //}
 
 resource "harness_platform_connector_jira" "jira_se" {
@@ -276,6 +296,8 @@ resource "harness_platform_connector_jira" "jira_se" {
       password_ref = "account.Harness_JIRA_Key"
     }
   }
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 resource "harness_platform_connector_newrelic" "new_relic" {
@@ -286,6 +308,8 @@ resource "harness_platform_connector_newrelic" "new_relic" {
   delegate_selectors = [local.delegate_selector]
   account_id         = "1805869"
   api_key_ref        = "account.NewRelic"
+
+  depends_on = [harness_platform_secret_text.gcp_secrets]
 }
 
 // Cloud Cost Connectors
@@ -378,12 +402,13 @@ resource "harness_platform_resource_group" "sandbox_org_rg" {
 }
 
 // Users
-resource "harness_platform_user" "users" {
-  for_each = toset(var.users)
-
-  email       = each.value
-  user_groups = ["_account_all_users"]
-}
+// produced an unexpected new value: Root object was present, but now absent. This is a bug in the provider.
+//resource "harness_platform_user" "users" {
+//  for_each = toset(var.users)
+//
+//  email       = each.value
+//  user_groups = ["_account_all_users"]
+//}
 
 // User Groups
 resource "harness_platform_usergroup" "user_groups" {

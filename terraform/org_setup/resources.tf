@@ -828,6 +828,48 @@ resource "harness_platform_policy" "dast_policy" {
   REGO
 }
 
+resource "harness_platform_policy" "approval_gate" {
+  identifier = "Mandate_JIRA_or_ServiceNow_Gates"
+  name       = "Mandate JIRA or ServiceNow Gates"
+  org_id     = var.org_id
+  project_id = local.primary_demo_project
+  rego       = <<-REGO
+    # Required for Production Deployments:
+    #         An approval stage prior to deployment
+    #         That approval stage to contain a JiraApproval step
+    package pipeline
+
+    # Required approval type(s)
+    required_steps = ["JiraApproval"]
+
+    deny[msg] {
+        some prod_index
+        input.pipeline.stages[prod_index].stage.spec.infrastructure.environment.type == "Production"
+        not approval_before_prod(prod_index)
+        msg := sprintf("Deployment to higher environments require an approval stage. '%s' does not have an Approval stage", [input.pipeline.stages[prod_index].stage.name])
+    }
+
+    deny[msg] {
+        stage = input.pipeline.stages[_].stage
+        stage.type == "Approval"
+        existing_steps := [s | s = stage.spec.execution.steps[_].step.type]
+        required_step := required_steps[_]
+        not contains(existing_steps, required_step)
+        msg := sprintf("Approval stage '%s' is missing required step '%s'", [stage.name, required_step])
+    }
+
+    approval_before_prod(prod_index) {
+        some approval_index
+        approval_index < prod_index
+        input.pipeline.stages[approval_index].stage.type == "Approval"
+    }
+
+    contains(arr, elem) {
+        arr[_] = elem
+    }
+  REGO
+}
+
 resource "harness_platform_policy" "org_naming" {
   for_each = var.org_policies
 
@@ -871,6 +913,20 @@ resource "harness_platform_policyset" "org_naming" {
   enabled    = true
   policies {
     identifier = harness_platform_policy.org_naming["${lower(each.value.pol_type)}"].id
+    severity   = "error"
+  }
+}
+
+resource "harness_platform_policyset" "approval_required" {
+  identifier = "Approval_Required_for_Prod_Deployments"
+  name       = "Approval Required for Prod Deployments"
+  org_id     = var.org_id
+  project_id = local.primary_demo_project
+  action     = "onsave"
+  type       = "pipeline"
+  enabled    = true
+  policies {
+    identifier = harness_platform_policy.approval_gate.id
     severity   = "error"
   }
 }
